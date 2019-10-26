@@ -1,7 +1,7 @@
                 ORIG    0000h
 
                 MVI     R1,00B5h
-                MVI     R2,0A00h
+                MVI     R2,09CCh
                 JAL     PRODUTO
 FIM:            BR      FIM
 
@@ -24,8 +24,7 @@ PRODUTO:        MVI     R3, 0
                 BR.Z    .Fim
                 
 .add:           ADD     R3, R3, R1
-                BR.NO   .Loop
-                STC
+                BR.NC   .Loop
                 ADDC    R4,R4,R0
 .Loop:          DEC     R2
                 BR.NZ   .add
