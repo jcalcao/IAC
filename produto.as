@@ -2,7 +2,7 @@
 
                 MVI     R1,00B5h
                 MVI     R2,0A00h
-                JAL     Produto
+                JAL     PRODUTO
 FIM:            BR      FIM
 
 
@@ -11,13 +11,14 @@ FIM:            BR      FIM
 ;
 
 ; -----------------------------------------------------
-; Produto: Calculo produto de dois valores
+; Produto: Calculo produto de dois valores em virgula fixa (8bits inteiros e 8
+;        bits fracionarios)
 ; Argumentos: R1 e R2
-; Retorno: R1
+; Retorno: R3
 ; Efeitos: -
 
 
-Produto:        MVI     R3, 0
+PRODUTO:        MVI     R3, 0
                 MVI     R4,0
                 CMP     R2, R0
                 BR.Z    .Fim
@@ -37,4 +38,5 @@ Produto:        MVI     R3, 0
                 SHL     R4
                 BR      .fixedpoint
                 
-.Fim:           JMP     R7
+.Fim:           ADD     R3,R3,R4
+                JMP     R7
