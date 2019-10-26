@@ -1,9 +1,10 @@
 import math
-tempo = 1 #Intervalos tempo (segundos)
+intervalo_tempo = 0.1 #Intervalos intervalo_tempo (segundos)
 angulo = 45 #graus
 aceleracao_gravidade = 9.8 #m/s^2
 posicao = 0 #metros
-velocidade_inicial = 1 #m/s
+velocidade_inicial = 0 #m/s
+time_limit = 5
 
 def aceleracaoX(angulo,a_Gravidade):
     angulo = math.radians(angulo)
@@ -11,21 +12,24 @@ def aceleracaoX(angulo,a_Gravidade):
     return aceleracao
 
 def velocidadeX(velocidade_inicial, aceleracao):
-    velocidade = aceleracao*tempo
+    velocidade = aceleracao*intervalo_tempo
     velocidade = velocidade + velocidade_inicial
     return velocidade
 
 def posicaoX(posicao, velocidade_inicial):
     aceleracao = aceleracaoX(angulo,aceleracao_gravidade)
-    posicao = posicao + velocidadeX(velocidade_inicial,aceleracao)*tempo
+    posicao = posicao + velocidade_inicial*intervalo_tempo + (aceleracao*(intervalo_tempo)**2)/2
     return posicao
     
 def teste():
-    global tempo
-    for tempo in range(tempo,10):
-        x = posicaoX(posicao,velocidade_inicial)
-        v = velocidadeX(velocidade_inicial,aceleracaoX(angulo,aceleracao_gravidade))
-        print("posicao = ",x,"velocidade =",v)
+    global velocidade_inicial
+    global posicao
+    tempo = 0
+    while tempo < time_limit:
+        posicao = posicaoX(posicao,velocidade_inicial)
+        velocidade_inicial = velocidadeX(velocidade_inicial,aceleracaoX(angulo,aceleracao_gravidade))
+        print("posicao = ",posicao,"velocidade =",velocidade_inicial)
+        tempo = tempo + intervalo_tempo 
         
 def tabela_sen():
     for i in range(0,91):
