@@ -1,4 +1,4 @@
- ;ADRESSES
+;ADRESSES
 
 ACELERO         EQU     FFEBh
 IO_READ         EQU     FFFFh
@@ -13,17 +13,17 @@ RESULT_VX       TAB     100
                
                 ORIG    0000h
                 
-DIVISAO         EQU    0001H ; 1/255
 RESSALTO        WORD    0
 CONT_X          WORD    0
 CONT_VX         WORD    0
 SPI_INI         EQU     7fffh
 GRAV            EQU     09CCh
-V_INI           WORD    0100h
+GRAVDIV         EQU     0009h    ;grav dividida por 255
+V_INI           WORD    0000h
 POSICAO_INI     WORD    0100H
 TEMPO           WORD    0000H
-INTERVALO_TEMPO WORD    0100H
-TIME_LIMIT      WORD    0A00h
+INTERVALO_TEMPO WORD    0A00H
+TIME_LIMIT      WORD    FA00h ;250
 
                 ORIG    0000h
                 MVI     R2,'*'
@@ -191,12 +191,9 @@ ACELERACAOX:
                 DEC     R6
                 MVI     R4,ACELERO
                 LOAD    R2,M[R4]
-                MVI     R1,GRAV
-                JAL     PRODUTO; a = x/255 * g
-                MOV     R1,R3
-                MVI     R2,DIVISAO
-                JAL     PRODUTO
-                INC     R6
+                MVI     R1,GRAVDIV    ;0009h
+                JAL     PRODUTO;
+                INC     R6             ;R3=acelerometro*(grav/255)
                 LOAD    R7,M[R6]
                 JMP     R7
 
