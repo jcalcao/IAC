@@ -17,9 +17,8 @@ CONT_X          WORD    0
 CONT_VX         WORD    0
 SPI_INI         EQU     7fffh
 GRAV            EQU     09CCh
-
-
 GRAVDIV         EQU     0009h    ;grav dividida por 255
+
 VALORTEMPO      EQU     1
 V_INI           WORD    0000h
 POSICAO_INI     WORD    0100H
