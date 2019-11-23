@@ -1,0 +1,385 @@
+TIMER_VALUE     EQU     FFF6h
+TIMER_CONTROL   EQU     FFF7h
+INT_MASK        EQU     FFFAh
+
+G_SENSORX       EQU     FFEBh
+IO_WRITE        EQU     FFFEh 
+IO_CTRL         EQU     FFFCh
+
+                ORIG    1000h
+RESULT_X        TAB     100
+RESULT_VX       TAB     100
+
+                ORIG    0000h
+VALORTEMPO      EQU     1
+N_FLAG          WORD    0
+CONT_X          WORD    0
+CONT_VX         WORD    0
+SPI_INI         EQU     7fffh
+GRAVDIV         EQU     0009h    ;grav dividida por 255
+V_INI           WORD    0000h
+POSICAO_INI     WORD    0A00h
+INTERVALO_TEMPO WORD    0019H
+
+;Interrupcao Temporizador
+                ORIG    7FF0h
+                STOR    M[R6],R7
+                DEC     R6
+                
+                JAL     Main
+
+                INC     R6
+                LOAD    R7,M[R6]
+
+                RTI
+                
+;Codigo programa
+                ORIG    0000h
+
+                MVI     R2,'*'
+                MVI     R3,81
+                JAL     TEXT_WRITE
+                MVI     R1,0000000101001111b
+                MVI     R2,'*'
+                MVI     R3,81
+                JAL     TEXT_WRITE
+                MVI     R4,POSICAO_INI
+                LOAD    R1,M[R4]
+                JAL     fixedpoint
+                MVI     R3,0000000100000000b
+                ADD     R1,R1,R3
+                INC     R1
+                MVI     R2,'o'
+                MVI     R3, 1
+                JAL     TEXT_WRITE
+                
+                MVI     R6,SPI_INI
+                MVI     R1,8000h
+                MVI     R2,INT_MASK
+                STOR    M[R2],R1
+                ENI
+
+
+Loop:           MVI     R1,TIMER_VALUE
+                MVI     R2,VALORTEMPO
+                STOR    M[R1],R2
+                MVI     R1,TIMER_CONTROL
+                MVI     R2,1
+                STOR    M[R1],R2
+                BR      Loop
+
+                
+
+Main:           STOR    M[R6],R7
+                DEC     R6
+                MVI     R4,POSICAO_INI
+                LOAD    R1,M[R4]
+                JAL     APAGA_POS
+                MVI     R5,V_INI
+                LOAD    R2,M[R5]
+                JAL     POSICAOX
+                MVI     R4,POSICAO_INI
+                STOR    M[R4],R3
+                JAL     ACELERACAOX
+                MVI     R4,V_INI
+                LOAD    R1,M[R4]
+                MOV     R2,R3
+                JAL     VELOCIDADEX
+                MVI     R5,V_INI
+                STOR    M[R5],R3
+                JAL     ADDPOSTERMINAL
+                INC     R6
+                LOAD    R7,M[R6]
+                JMP     R7
+                
+
+
+;PosicaoX: Calcula a posicao atual do corpo
+;Argumentos: R1(posicao_inicial) e R2(velocidade_inicial)
+;Retorno: R3(posica_atual)
+;Efeitos:_____
+POSICAOX:       STOR    M[R6],R7
+                DEC     R6
+                STOR    M[R6],R1
+                DEC     R6
+                STOR    M[R6],R2
+                DEC     R6
+                JAL     ACELERACAOX
+                MVI     R4,INTERVALO_TEMPO
+                LOAD    R1,M[R4]
+                MOV     R2,R3
+                JAL     PRODUTO
+                MVI     R4,INTERVALO_TEMPO
+                LOAD    R1,M[R4]
+                MOV     R2,R3
+                JAL     PRODUTO
+                SHRA    R3        ;(aceleracao)(tempo)^2/2
+                INC     R6
+                LOAD    R1,M[R6] ;Vai buscar a v_inicial a stack
+                JAL     .getV_Inicial
+                ADD     R3,R3,R1
+                INC     R6
+                LOAD    R1,M[R6] ;Vai buscar a posicao_inicial a stack
+                ADD     R3,R3,R1
+                INC     R6
+                LOAD    R7,M[R6]
+                JMP     R7
+
+;getV_Inicial: Calcula v_inicial*tempo da equacao de posicao
+;Argumentos: R1(Velocidade Inicial)
+;Return: R1(Distancia percorrida)
+;Efeito:-----
+.getV_Inicial:  STOR    M[R6],R7
+                DEC     R6
+                STOR    M[R6],R3
+                DEC     R6
+                STOR    M[R6],R4
+                DEC     R6
+                STOR    M[R6],R2
+                DEC     R6
+                MVI     R4, INTERVALO_TEMPO
+                LOAD    R2,M[R4]
+                JAL     PRODUTO
+                MOV     R1,R3
+                INC     R6
+                LOAD    R2,M[R6]
+                INC     R6
+                LOAD    R4,M[R6]
+                INC     R6
+                LOAD    R3,M[R6]
+                INC     R6
+                LOAD    R7,M[R6]
+                JMP     R7
+;ACELERACAOX: Calcula a aceleracao do corpo
+;Argumentos: 
+;Return: R3 (Aceleracao do corpo)
+;Efeito: -----
+ACELERACAOX:    STOR    M[R6],R7
+                DEC     R6
+                MVI     R4,G_SENSORX
+                LOAD    R2,M[R4]
+                MVI     R1,GRAVDIV    ;0009h
+                JAL     PRODUTO;
+                INC     R6             ;R3=acelerometro*(grav/255)
+                LOAD    R7,M[R6]
+                JMP     R7
+
+
+;VELOCIDADEX: Calcula a velocidade atual do corpo
+;Agumentos: R1(Velocidade-inicial) e R2(aceleracao do corpo)
+;Return: R3(Velocidade atual)
+;Efeitos: -----
+VELOCIDADEX:    STOR    M[R6],R7
+                DEC     R6
+                STOR    M[R6],R1 ;Push velocidade inicial
+                DEC     R6
+                MVI     R4,INTERVALO_TEMPO
+                LOAD    R1,M[R4]
+                JAL     PRODUTO
+                INC     R6
+                LOAD    R1,M[R6] ;Pop velocidade inicial
+                ADD     R3,R3,R1
+                INC     R6
+                LOAD    R7,M[R6]
+                JMP     R7
+                                
+;
+; Rotinas
+;
+
+; -----------------------------------------------------
+; Produto: Calculo produto de dois valores em virgula fixa (8bits inteiros e 8
+;        bits fracionarios)
+; Argumentos: R1 e R2
+; Retorno: R3
+; Efeitos: -
+
+
+PRODUTO:        STOR    M[R6],R7
+                DEC     R6
+                
+                MOV     R3,R1
+                JAL     .n_Flag
+                MOV     R1,R3
+                
+                MOV     R3,R2
+                JAL     .n_Flag
+                MOV     R2,R3
+                
+                CMP     R2,R0
+                BR.Z    .Fim
+                
+                
+                MVI     R3, 0
+                MVI     R4,0
+                
+.add:           ADD     R3, R3, R1
+                BR.NC   .Loop
+                ADDC    R4,R4,R0
+.Loop:          DEC     R2
+                BR.NZ   .add
+
+                MVI     R2,8
+.fixedpoint:    CMP     R2,R0
+                BR.Z    .Fim
+                DEC     R2
+                SHR     R3
+                SHL     R4
+                BR      .fixedpoint
+                
+.Fim:           OR      R3,R3,R4
+                MVI     R4,N_FLAG
+                LOAD    R1,M[R4]
+                CMP     R1,R0
+                JAL.NZ  .Negate
+                INC     R6
+                LOAD    R7,M[R6]
+                JMP     R7
+
+.n_Flag:        STOR    M[R6],R4
+                DEC     R6
+                STOR    M[R6],R1
+                DEC     R6
+                
+                CMP     R3,R0
+                BR.P   .n_FlagFim
+                
+                MVI     R1,1
+                MVI     R4,N_FLAG
+                STOR    M[R4],R1
+                NEG     R3
+                
+.n_FlagFim:     INC     R6
+                LOAD    R1,M[R6]
+                INC     R6
+                LOAD    R4,M[R6]
+                
+                JMP     R7
+
+.Negate:        NEG     R3
+                MVI     R4,N_FLAG
+                STOR    M[R4],R0
+                JMP     R7
+
+
+;----------------------------------------------------------------
+;TEXT_WRITE: Escreve na janela de texto
+;Argumentos; R1(Posicao do cursor) R2(carater a escrever), R3(nr de carateresa escrever)
+;Retorno: ---------------
+;Efeitos: Janela de Texto
+
+TEXT_WRITE:     MVI     R4,IO_CTRL
+                STOR    M[R4],R1 
+.escreve:       MVI     R5,IO_WRITE
+                STOR    M[R5],R2
+                DEC     R3
+                CMP     R3,R0
+                BR.NZ   .escreve
+                JMP     R7
+
+;------------------------------------------------------------------
+;ADDPOSTERMINAL: Atualiza a posicao da bola na janela de texto e resolve as colisoes
+;Argumentos:---------------------------
+;Retorno;----------------
+;Efeitos:Janela Texto, (em caso colisao) POSICAO_INI e V_INI
+
+ADDPOSTERMINAL: STOR    M[R6],R7
+                DEC     R6
+                
+                MVI     R4,POSICAO_INI
+                LOAD    R1,M[R4]
+                MVI     R5,V_INI
+                LOAD    R2,M[R5]
+                
+                MVI     R3,4E00h  ;posicao 78 em virgula fixa
+                CMP     R3,R1
+                JAL.N   .colisionHigh
+                MVI     R3,1
+                CMP     R1,R3
+                JAL.NP  .colisionLow
+                
+                JAL     fixedpoint
+                
+                MVI     R3,0000000100000000b
+                ADD     R1,R3,R1
+                INC     R1
+                MVI     R2,'o'
+                MVI     R3,1
+                JAL     TEXT_WRITE
+                
+                INC     R6
+                LOAD    R7,M[R6]
+                JMP     R7
+
+;-------------------------------------------------------------------
+;.colisonHigh: Trata da colisao da bola com a posicao 79 da figura
+;Argumentos: R1(Posicao_Inicial), R2(Velocidade_Inicial), R4(Ponteiro P_INI)
+;R5(Ponteiro V_INI)
+;retorno:----------------
+;Efeitos:Nega a velocidade inicial e grava, e altera a posicao inicial de acordo
+;com a figura
+.colisionHigh:  NEG     R2
+                MVI     R4,V_INI
+                STOR    M[R4],R2
+                MVI     R3,4E00h
+                SUB     R1,R1,R3
+                SUB     R1,R3,R1
+                
+                MVI     R5,POSICAO_INI
+                STOR    M[R5],R1
+                JMP     R7
+
+;----------------------------------------------------------------------------
+;.colisionLow: Trata da colisao no ponto inicial
+;.Argumentos; == .colisionHigh
+;retorno;-------------
+;Efeitos: == .colisionHigh
+
+.colisionLow:   CMP     R2,R0
+                BR.NN   .fim  ;caso 0 ou a bola nao mexer ao principio
+                NEG     R2
+                MVI     R4,V_INI
+                STOR    M[R4],R2
+                NEG     R1
+                MVI     R5,POSICAO_INI
+                STOR    M[R5],R1
+                
+.fim:           JMP     R7
+
+;-------------------------------------------
+;APAGA_POS: Apaga a posicao anterior da janela
+;Argumentos: R1 (Posicao Inicial)
+;Retorno: ----------
+;Efeitos: apaga o da janela
+
+APAGA_POS:      STOR    M[R6],R7
+                DEC     R6
+                STOR    M[R6],R2
+                DEC     R6
+                STOR    M[R6],R1
+                DEC     R6
+                
+                JAL     fixedpoint
+                
+                MVI     R3,0000000100000000b
+                ADD     R1,R1,R3
+                INC     R1
+                MVI     R2,' '
+                MVI     R3,1
+                JAL     TEXT_WRITE
+                
+.fim:           INC     R6
+                LOAD    R1,M[R6]
+                INC     R6
+                LOAD    R2,M[R6]
+                INC     R6
+                LOAD    R7,M[R6]
+                
+                JMP     R7
+
+fixedpoint:     MVI     R3,8
+.loop:          DEC     R3
+                SHR     R1
+                CMP     R3,R0
+                BR.NZ   .loop
+                JMP     R7
